@@ -216,6 +216,21 @@
             background-color: #d35400;
         }
 
+        .btn-cancel {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .btn-cancel:hover {
+            background-color: #c0392b;
+        }
+
         /* Product View Navigation Tabs */
         .product-tabs {
             display: flex;
@@ -457,6 +472,16 @@
             color: var(--primary-color);
         }
 
+        .shipping-info-badge {
+            font-size: 0.75rem;
+            color: #7f8c8d;
+            background-color: #eef2f3;
+            padding: 6px 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            display: block;
+        }
+
         .empty-text {
             text-align: center;
             color: var(--text-muted);
@@ -471,6 +496,11 @@
             border-radius: 8px;
             padding: 12px 15px;
             margin-bottom: 12px;
+        }
+
+        .order-card.cancelled {
+            background: #fdf2f2;
+            border-color: #f5c6cb;
         }
 
         .order-header {
@@ -489,10 +519,18 @@
             padding-left: 20px;
         }
 
+        .order-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            border-top: 1px dashed #eee;
+            padding-top: 8px;
+        }
+
         .order-total-price {
             font-weight: bold;
             color: var(--accent-color);
-            text-align: right;
             font-size: 1rem;
         }
 
@@ -675,7 +713,7 @@
 
     <header>
         <h1>🛍️ SELL&amp;BUY</h1>
-        <p>ตลาดกลางลงประกาศซื้อขายสินค้ามือสอง พร้อมระบบสั่งซื้อ และแชทในตัว</p>
+        <p>ตลาดกลางลงประกาศซื้อขายสินค้ามือสอง พร้อมระบบสั่งซื้อ ยกเลิก และแชทในตัว</p>
     </header>
 
     <div class="container">
@@ -716,9 +754,10 @@
                         </select>
                     </div>
 
+                    <!-- เปลี่ยนจากการใส่ URL ให้เลือกรูปจากคอมพิวเตอร์ -->
                     <div class="form-group">
-                        <label for="imageUrl">ลิงก์รูปภาพ (URL)</label>
-                        <input type="url" id="imageUrl" class="form-control" placeholder="https://example.com/item.jpg">
+                        <label for="imageFile">เลือกรูปภาพสินค้าจากคอมพิวเตอร์</label>
+                        <input type="file" id="imageFile" class="form-control" accept="image/*">
                     </div>
 
                     <button type="submit" class="btn">🚀 ลงประกาศขาย</button>
@@ -733,10 +772,11 @@
                     <li class="empty-text">ยังไม่มีสินค้าในตะกร้า</li>
                 </ul>
 
-                <div class="form-group">
-                    <label for="shipping">ค่าจัดส่ง (บาท)</label>
-                    <input type="number" id="shipping" class="form-control" value="50" min="0" oninput="calculateTotal()">
-                </div>
+                <span class="shipping-info-badge">
+                    🚚 <strong>เงื่อนไขค่าจัดส่งอัตโนมัติ:</strong><br>
+                    • ราคาสินค้า 0 - 999 ฿ คิดค่าส่ง 50 ฿<br>
+                    • ราคาสินค้า 1,000 ฿ ขึ้นไป คิดค่าส่ง 100 ฿
+                </span>
 
                 <div class="calc-box">
                     <div class="calc-row">
@@ -744,12 +784,12 @@
                         <span id="subtotal">฿0</span>
                     </div>
                     <div class="calc-row">
-                        <span>ค่าจัดส่ง:</span>
-                        <span id="shippingDisplay">฿50</span>
+                        <span>ค่าจัดส่ง (อัตโนมัติ):</span>
+                        <span id="shippingDisplay">฿0</span>
                     </div>
                     <div class="calc-row total">
                         <span>ยอดสุทธิ:</span>
-                        <span id="grandTotal" style="color: var(--secondary-color);">฿50</span>
+                        <span id="grandTotal" style="color: var(--secondary-color);">฿0</span>
                     </div>
                 </div>
 
@@ -1022,7 +1062,7 @@
             document.getElementById('profileModal').classList.remove('active');
         }
 
-        // --- Order History System ---
+        // --- Order History & Cancellation System ---
         function openOrderHistoryModal() {
             if (!currentUser) {
                 alert('กรุณาเข้าสู่ระบบเพื่อดูประวัติการสั่งซื้อ');
@@ -1047,25 +1087,67 @@
                 return;
             }
 
-            container.innerHTML = myOrders.slice().reverse().map(order => `
-                <div class="order-card">
-                    <div class="order-header">
-                        <span>🆔 คำสั่งซื้อ #${order.id}</span>
-                        <span>🕒 ${order.date}</span>
+            container.innerHTML = myOrders.slice().reverse().map(order => {
+                const isCancelled = order.status === 'cancelled';
+                return `
+                    <div class="order-card ${isCancelled ? 'cancelled' : ''}">
+                        <div class="order-header">
+                            <span>🆔 คำสั่งซื้อ #${order.id} ${isCancelled ? '<strong style="color:var(--accent-color);">(ยกเลิกแล้ว)</strong>' : ''}</span>
+                            <span>🕒 ${order.date}</span>
+                        </div>
+                        <ul class="order-items-list">
+                            ${order.items.map(item => `
+                                <li><strong>${escapeHtml(item.title)}</strong> - ฿${item.sellPrice.toLocaleString()} (ผู้ขาย: ${escapeHtml(item.sellerUsername || 'ทั่วไป')})</li>
+                            `).join('')}
+                        </ul>
+                        <div style="font-size:0.85rem; color:#555; margin-bottom:5px;">
+                            🚚 ค่าจัดส่ง: ฿${order.shippingFee.toLocaleString()} | 📍 จัดส่งที่: ${escapeHtml(order.address)}
+                        </div>
+                        <div class="order-footer">
+                            <div class="order-total-price">
+                                ยอดชำระสุทธิ: ฿${order.totalAmount.toLocaleString()}
+                            </div>
+                            ${!isCancelled ? `
+                                <button class="btn-cancel" onclick="cancelOrder(${order.id})">❌ ยกเลิกการสั่งซื้อ</button>
+                            ` : ''}
+                        </div>
                     </div>
-                    <ul class="order-items-list">
-                        ${order.items.map(item => `
-                            <li><strong>${escapeHtml(item.title)}</strong> - ฿${item.sellPrice.toLocaleString()} (ผู้ขาย: ${escapeHtml(item.sellerUsername || 'ทั่วไป')})</li>
-                        `).join('')}
-                    </ul>
-                    <div style="font-size:0.85rem; color:#555; margin-bottom:5px;">
-                        🚚 ค่าจัดส่ง: ฿${order.shippingFee.toLocaleString()} | 📍 จัดส่งที่: ${escapeHtml(order.address)}
-                    </div>
-                    <div class="order-total-price">
-                        ยอดชำระสุทธิ: ฿${order.totalAmount.toLocaleString()}
-                    </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
+        }
+
+        // ระบบยกเลิกการสั่งซื้อ
+        function cancelOrder(orderId) {
+            if (!confirm('คุณต้องการยกเลิกคำสั่งซื้อนี้ใช่หรือไม่? สินค้าจะถูกคืนกลับเข้าสู่ระบบ')) return;
+
+            const order = orders.find(o => o.id === orderId);
+            if (!order || order.status === 'cancelled') return;
+
+            order.status = 'cancelled';
+
+            // คืนสินค้ากลับเข้าตลาด
+            order.items.forEach(item => {
+                if (!products.some(p => p.id === item.id)) {
+                    products.push(item);
+                }
+
+                // ส่งการแจ้งเตือนไปยังผู้ขาย
+                notifications.push({
+                    id: Date.now() + Math.random(),
+                    targetUser: item.sellerUsername || 'ทั่วไป',
+                    type: 'chat',
+                    productTitle: item.title,
+                    message: `⚠️ ผู้ซื้อ (${order.buyerUsername}) ได้ยกเลิกคำสั่งซื้อ #${order.id} สำหรับสินค้า "${item.title}" แล้ว (นำสินค้ากลับสู่ตลาดเรียบร้อย)`,
+                    date: new Date().toLocaleString('th-TH'),
+                    read: false
+                });
+            });
+
+            saveToLocalStorage();
+            filterProducts();
+            renderOrderHistory();
+            renderUserBar();
+            alert('ยกเลิกคำสั่งซื้อเรียบร้อยแล้ว สินค้าถูกนำกลับเข้าสู่ตลาดขาย');
         }
 
         // --- Notification System ---
@@ -1121,7 +1203,7 @@
                 } else if (n.type === 'chat') {
                     return `
                         <div class="noti-item">
-                            <div class="noti-title">💬 ข้อความใหม่เกี่ยวกับสินค้า</div>
+                            <div class="noti-title">💬 การแจ้งเตือนข้อความ/คำสั่งซื้อ</div>
                             <div class="noti-time">🕒 ${n.date}</div>
                             <div><strong>เรื่อง:</strong> ${escapeHtml(n.productTitle)}</div>
                             <div class="noti-details">
@@ -1151,7 +1233,6 @@
 
             let filtered = products;
 
-            // กรองตามแท็บการแสดงผล
             if (currentTab === 'my') {
                 if (!currentUser) {
                     filtered = [];
@@ -1162,7 +1243,6 @@
                 filtered = filtered.filter(p => !currentUser || p.sellerUsername !== currentUser.username);
             }
 
-            // กรองตามข้อความค้นหาและสภาพสินค้า
             filtered = filtered.filter(p => {
                 const matchesSearch = p.title.toLowerCase().includes(searchVal);
                 let matchesCondition = true;
@@ -1220,7 +1300,7 @@
             });
         }
 
-        // --- Cart & Calculation ---
+        // --- Cart & Calculation (ปรับค่าจัดส่งอัตโนมัติ) ---
         function addToCart(id) {
             const product = products.find(p => p.id === id);
             if (product) {
@@ -1258,18 +1338,23 @@
             `).join('');
         }
 
+        // คำนวณค่าจัดส่งอัตโนมัติตามเรทราคาสินค้า
         function calculateTotal() {
             const subtotal = cart.reduce((sum, item) => sum + item.sellPrice, 0);
-            const shipping = parseFloat(document.getElementById('shipping').value) || 0;
+            let shipping = 0;
 
-            let total = subtotal + shipping;
-            if (total < 0) total = 0;
+            if (cart.length > 0) {
+                // เงื่อนไข: 0-999 คิด 50 บาท, 1000 ขึ้นไป คิด 100 บาท
+                shipping = subtotal >= 1000 ? 100 : 50;
+            }
+
+            const total = subtotal + shipping;
 
             document.getElementById('subtotal').innerText = `฿${subtotal.toLocaleString()}`;
             document.getElementById('shippingDisplay').innerText = `฿${shipping.toLocaleString()}`;
             document.getElementById('grandTotal').innerText = `฿${total.toLocaleString()}`;
 
-            return total;
+            return { subtotal, shipping, total };
         }
 
         // --- Checkout & Ordering System ---
@@ -1285,11 +1370,13 @@
                 return;
             }
 
-            const total = calculateTotal();
+            const calc = calculateTotal();
             const summaryHtml = `
                 <p><strong>ผู้สั่งซื้อ:</strong> ${escapeHtml(currentUser.username)}</p>
                 <p><strong>จำนวนสินค้า:</strong> ${cart.length} รายการ</p>
-                <p><strong>ยอดชำระสุทธิ:</strong> <span style="color:var(--accent-color); font-size:1.2rem; font-weight:bold;">฿${total.toLocaleString()}</span></p>
+                <p><strong>ราคาสินค้ารวม:</strong> ฿${calc.subtotal.toLocaleString()}</p>
+                <p><strong>ค่าจัดส่ง:</strong> ฿${calc.shipping.toLocaleString()}</p>
+                <p style="margin-top:5px;"><strong>ยอดชำระสุทธิ:</strong> <span style="color:var(--accent-color); font-size:1.2rem; font-weight:bold;">฿${calc.total.toLocaleString()}</span></p>
             `;
             document.getElementById('checkoutSummary').innerHTML = summaryHtml;
             document.getElementById('checkoutPhone').value = currentUser.phone;
@@ -1315,24 +1402,23 @@
             currentUser.address = address;
             localStorage.setItem('sell_buy_user', JSON.stringify(currentUser));
 
-            const total = calculateTotal();
-            const shippingFee = parseFloat(document.getElementById('shipping').value) || 0;
+            const calc = calculateTotal();
 
-            // บันทึกคำสั่งซื้อลงในประวัติการสั่งซื้อ (Order History)
             const newOrder = {
                 id: Math.floor(100000 + Math.random() * 900000),
                 buyerUsername: currentUser.username,
                 items: [...cart],
-                shippingFee: shippingFee,
-                totalAmount: total,
+                shippingFee: calc.shipping,
+                totalAmount: calc.total,
                 phone: phone,
                 address: address,
+                status: 'active',
                 date: new Date().toLocaleString('th-TH')
             };
 
             orders.push(newOrder);
 
-            // ส่งการแจ้งเตือนไปยังผู้ขาย
+            // แจ้งเตือนผู้ขาย
             cart.forEach(item => {
                 notifications.push({
                     id: Date.now() + Math.random(),
@@ -1347,13 +1433,13 @@
                 });
             });
 
-            // ลบสินค้าที่สั่งซื้อออกจากรายการขาย
+            // ลบสินค้าที่ถูกซื้อออกจากรายการตลาด
             const orderedIds = cart.map(item => item.id);
             products = products.filter(p => !orderedIds.includes(p.id));
             
             saveToLocalStorage();
 
-            alert(`🎉 สั่งซื้อสำเร็จ!\nขอบคุณคุณ ${currentUser.username}\nเบอร์ติดต่อ: ${phone}\nสินค้าจะถูกจัดส่งไปที่:\n${address}`);
+            alert(`🎉 สั่งซื้อสำเร็จ!\nขอบคุณคุณ ${currentUser.username}\nยอดชำระ: ฿${calc.total.toLocaleString()} (ค่าจัดส่ง ฿${calc.shipping})\nจัดส่งที่:\n${address}`);
             
             cart = [];
             filterProducts();
@@ -1437,7 +1523,7 @@
             if (e.key === 'Enter') sendChatMessage();
         }
 
-        // --- Helper Functions ---
+        // --- Helper Functions & Form Handler (อัปโหลดรูปภาพจากเครื่อง) ---
         document.getElementById('addItemForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -1447,22 +1533,39 @@
                 return;
             }
 
-            const newItem = {
-                id: Date.now(),
-                title: document.getElementById('title').value,
-                sellerUsername: currentUser.username,
-                phone: document.getElementById('phone').value,
-                origPrice: parseFloat(document.getElementById('origPrice').value),
-                sellPrice: parseFloat(document.getElementById('sellPrice').value),
-                condition: document.getElementById('condition').value,
-                img: document.getElementById('imageUrl').value
+            const fileInput = document.getElementById('imageFile');
+            const file = fileInput.files[0];
+
+            // ฟังก์ชันสำหรับบันทึกข้อมูลสินค้า
+            const createAndSaveProduct = (imgDataUrl) => {
+                const newItem = {
+                    id: Date.now(),
+                    title: document.getElementById('title').value,
+                    sellerUsername: currentUser.username,
+                    phone: document.getElementById('phone').value,
+                    origPrice: parseFloat(document.getElementById('origPrice').value),
+                    sellPrice: parseFloat(document.getElementById('sellPrice').value),
+                    condition: document.getElementById('condition').value,
+                    img: imgDataUrl || ''
+                };
+
+                products.unshift(newItem);
+                saveToLocalStorage();
+                filterProducts();
+                this.reset();
+                alert('ลงประกาศขายเรียบร้อยแล้ว!');
             };
 
-            products.unshift(newItem);
-            saveToLocalStorage();
-            filterProducts();
-            this.reset();
-            alert('ลงประกาศขายเรียบร้อยแล้ว!');
+            // อ่านไฟล์ภาพแปลงเป็น Base64
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    createAndSaveProduct(event.target.result);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                createAndSaveProduct('');
+            }
         });
 
         function deleteProduct(id) {
