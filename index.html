@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SELL&BUY - ระบบซื้อขายพร้อมแชทและแจ้งเตือนเรียลไทม์</title>
+    <title>SELL&BUY </title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -176,7 +176,7 @@
 
     <!-- Navigation Bar -->
     <nav class="top-navbar">
-        <div class="brand-logo" onclick="switchPage('home')">🛍️ SELL&BUY System</div>
+        <div class="brand-logo" onclick="switchPage('home')">🛍️ SELL&BUY </div>
         <ul class="nav-menu" id="navMenu">
             <li class="nav-item active" onclick="switchPage('home', this)">🏠 หน้าแรก</li>
             <li class="nav-item" id="navDashboard" onclick="switchPage('dashboard', this)">
@@ -583,6 +583,7 @@
 
     <script>
         function calculateFee(price) {
+            if (price <= 500) return 15;
             if (price <= 1000) return 30;
             if (price <= 5000) return 50;
             return 100;
